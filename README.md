@@ -36,6 +36,8 @@ font: JetBrainsMono Nerd Font 12
 background: "#282828d0"
 color: "#fbf1c7"
 border: "#8ec07c"
+highlight: true # Draw a background behind the entry whose key is held down, defaults to false
+highlight_color: "#504945" # The color of that background, this is the default
 separator: " ➜ "
 border_width: 2
 corner_r: 10

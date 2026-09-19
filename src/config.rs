@@ -27,6 +27,11 @@ pub struct Config {
     pub color: Color,
     #[default(Color::from_rgba_hex(0x8ec07cff))]
     pub border: Color,
+    /// Whether to draw a background behind the entry whose key is held down.
+    pub highlight: bool,
+    /// The color of that background.
+    #[default(Color::from_rgba_hex(0x504945ff))]
+    pub highlight_color: Color,
 
     pub anchor: ConfigAnchor,
     pub margin_top: i32,

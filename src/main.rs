@@ -396,7 +396,7 @@ impl KeyboardHandler for State {
             return;
         }
         let modifiers = ModifierState::from_xkb_state(&event.xkb_state);
-        let action = if let Some(action) = self.menu.get_action(modifiers, event.keysym) {
+        let action = if let Some(action) = self.menu.press(modifiers, event.keysym) {
             Some(action)
         } else if self.config.auto_kbd_layout {
             let mask = XkbMaskState::new(&event.xkb_state);
@@ -406,7 +406,7 @@ impl KeyboardHandler for State {
                 mask.with_locked_layout(layout).apply(&event.xkb_state);
                 if let Some(a) = self
                     .menu
-                    .get_action(modifiers, event.xkb_state.key_get_one_sym(event.keycode))
+                    .press(modifiers, event.xkb_state.key_get_one_sym(event.keycode))
                 {
                     action = Some(a);
                     break;
@@ -423,6 +423,7 @@ impl KeyboardHandler for State {
             } else if let Some(repeat) = event.repeat_info {
                 self.kbd_repeat = Some((Timer::new(repeat.delay, repeat.interval), action));
             }
+            self.draw(conn);
         }
     }
 
@@ -430,6 +431,9 @@ impl KeyboardHandler for State {
         self.kbd_repeat = None;
         if self.exit_on_release == Some(event.keycode) {
             self.close(conn);
+        } else {
+            self.menu.release();
+            self.draw(conn);
         }
     }
 
