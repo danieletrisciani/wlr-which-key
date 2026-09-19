@@ -1,4 +1,5 @@
 mod anchor;
+mod border;
 mod compat;
 mod entry;
 mod font;
@@ -13,6 +14,7 @@ use serde::Deserialize;
 use smart_default::SmartDefault;
 
 pub use self::anchor::ConfigAnchor;
+pub use self::border::Border;
 pub use self::entry::Entry;
 pub use self::font::Font;
 pub use self::namespace::Namespace;
@@ -25,8 +27,10 @@ pub struct Config {
     pub background: Color,
     #[default(Color::from_rgba_hex(0xfbf1c7ff))]
     pub color: Color,
-    #[default(Color::from_rgba_hex(0x8ec07cff))]
-    pub border: Color,
+    #[default(Border::solid(Color::from_rgba_hex(0x8ec07cff)))]
+    pub border: Border,
+    /// Gradient direction in degrees, when `border` is a list of colors.
+    pub border_angle: f64,
 
     pub anchor: ConfigAnchor,
     pub margin_top: i32,

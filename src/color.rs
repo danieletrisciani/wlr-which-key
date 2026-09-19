@@ -27,6 +27,12 @@ impl Color {
         }
     }
 
+    /// Components as `(r, g, b, a)`, with `a` resolved to 1.0 for opaque colors.
+    pub fn rgba(self) -> (f64, f64, f64, f64) {
+        let alpha = if self.alpha.is_nan() { 1.0 } else { self.alpha };
+        (self.red, self.green, self.blue, alpha)
+    }
+
     pub fn from_rgba(r: u8, g: u8, b: u8, a: u8) -> Self {
         Self {
             red: r as f64 / 255.0,

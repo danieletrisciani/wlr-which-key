@@ -294,7 +294,9 @@ impl State {
         cairo_ctx.close_path();
         self.config.background.apply(&cairo_ctx);
         cairo_ctx.fill_preserve().unwrap();
-        self.config.border.apply(&cairo_ctx);
+        self.config
+            .border
+            .apply(&cairo_ctx, width_f, height_f, self.config.border_angle);
         cairo_ctx.set_line_width(self.config.border_width);
         cairo_ctx.stroke().unwrap();
 
