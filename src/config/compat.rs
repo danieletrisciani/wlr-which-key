@@ -5,7 +5,7 @@ use smart_default::SmartDefault;
 use crate::color::Color;
 use crate::key::SingleKey;
 
-use super::{ConfigAnchor, Font, Namespace};
+use super::{Border, ConfigAnchor, Font, Namespace};
 
 #[derive(Deserialize, Default)]
 #[serde(transparent)]
@@ -85,7 +85,8 @@ impl From<Config> for super::Config {
         Self {
             background: value.background,
             color: value.color,
-            border: value.border,
+            border: Border::solid(value.border),
+            border_angle: 0.0,
             anchor: value.anchor,
             margin_top: value.margin_top,
             margin_right: value.margin_right,
