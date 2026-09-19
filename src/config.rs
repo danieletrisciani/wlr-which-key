@@ -31,6 +31,11 @@ pub struct Config {
     pub border: Border,
     /// Gradient direction in degrees, when `border` is a list of colors.
     pub border_angle: f64,
+    /// Whether to draw a background behind the entry whose key is held down.
+    pub highlight: bool,
+    /// The color of that background.
+    #[default(Color::from_rgba_hex(0x504945ff))]
+    pub highlight_color: Color,
 
     pub anchor: ConfigAnchor,
     pub margin_top: i32,

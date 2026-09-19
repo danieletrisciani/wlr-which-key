@@ -1,3 +1,4 @@
+use std::f64::consts::{FRAC_PI_2, PI, TAU};
 use std::str::FromStr;
 
 use anyhow::{Error, Result, bail};
@@ -10,10 +11,25 @@ use crate::config::{self, Config};
 use crate::key::{Key, ModifierState, SingleKey};
 use crate::text::{self, ComputedText};
 
+/// Horizontal padding of the highlight around an item.
+const PAD_LEFT: f64 = 10.0;
+const PAD_RIGHT: f64 = 4.0;
+
+fn rounded_rect(cr: &cairo::Context, x: f64, y: f64, width: f64, height: f64, r: f64) {
+    cr.new_sub_path();
+    cr.arc(x + r, y + r, r, PI, 3.0 * FRAC_PI_2);
+    cr.arc(x + width - r, y + r, r, 3.0 * FRAC_PI_2, TAU);
+    cr.arc(x + width - r, y + height - r, r, 0.0, FRAC_PI_2);
+    cr.arc(x + r, y + height - r, r, FRAC_PI_2, PI);
+    cr.close_path();
+}
+
 pub struct Menu {
     pages: Vec<MenuPage>,
     cur_page: usize,
     separator: ComputedText,
+    /// Item whose key is currently held down, as `(page, column, item)`.
+    pressed: Option<(usize, usize, usize)>,
 }
 
 struct MenuPage {
@@ -53,6 +69,7 @@ impl Menu {
         let mut this = Self {
             pages: Vec::new(),
             cur_page: 0,
+            pressed: None,
             separator: ComputedText::new(&config.separator, &context, &config.font.0),
         };
 
@@ -185,8 +202,8 @@ impl Menu {
         let mut dx = config.padding() + config.border_width;
         let dy = config.padding() + config.border_width;
         let page = &self.pages[self.cur_page];
-        for col in &page.columns {
-            self.render_column(config, cairo_ctx, dx, dy, page, col)?;
+        for (col_i, col) in page.columns.iter().enumerate() {
+            self.render_column(config, cairo_ctx, dx, dy, page, col_i)?;
             dx += col.key_col_width
                 + col.val_col_width
                 + self.separator.width
@@ -202,9 +219,28 @@ impl Menu {
         dx: f64,
         dy: f64,
         page: &MenuPage,
-        column: &MenuColumn,
+        col_i: usize,
     ) -> Result<()> {
+        let column = &page.columns[col_i];
         for (i, comp) in column.items.iter().enumerate() {
+            if config.highlight && self.pressed == Some((self.cur_page, col_i, i)) {
+                let width = column.key_col_width
+                    + self.separator.width
+                    + column.val_col_width
+                    + PAD_LEFT
+                    + PAD_RIGHT;
+                rounded_rect(
+                    cairo_ctx,
+                    dx - PAD_LEFT,
+                    dy + page.item_height * (i as f64),
+                    width,
+                    page.item_height,
+                    (page.item_height / 4.5).min(config.corner_r),
+                );
+                config.highlight_color.apply(cairo_ctx);
+                cairo_ctx.fill()?;
+            }
+
             comp.key_comp.render(
                 cairo_ctx,
                 text::RenderOptions {
@@ -247,6 +283,30 @@ impl Menu {
         }
 
         Ok(())
+    }
+
+    /// Position of the visible item bound to this key, if any.
+    fn find_visible(&self, modifiers: ModifierState, sym: xkb::Keysym) -> Option<(usize, usize)> {
+        let page = &self.pages[self.cur_page];
+        page.columns.iter().enumerate().find_map(|(col_i, col)| {
+            col.items
+                .iter()
+                .position(|i| i.key.matches(sym, modifiers))
+                .map(|item_i| (col_i, item_i))
+        })
+    }
+
+    /// Like [`Self::get_action`], but also highlights the item until [`Self::release`].
+    pub fn press(&mut self, modifiers: ModifierState, sym: xkb::Keysym) -> Option<Action> {
+        let action = self.get_action(modifiers, sym)?;
+        self.pressed = self
+            .find_visible(modifiers, sym)
+            .map(|(col_i, item_i)| (self.cur_page, col_i, item_i));
+        Some(action)
+    }
+
+    pub fn release(&mut self) {
+        self.pressed = None;
     }
 
     pub fn get_action(&self, modifiers: ModifierState, sym: xkb::Keysym) -> Option<Action> {

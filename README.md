@@ -39,6 +39,8 @@ background: "#282828d0"
 color: "#fbf1c7"
 border: "#8ec07c" # Or a list of colors for a gradient, e.g. ["#fabd2f", "#8ec07c"]
 border_angle: 45 # Gradient direction in degrees (0 = left to right, 90 = top to bottom), defaults to 0
+highlight: true # Draw a background behind the entry whose key is held down, defaults to false
+highlight_color: "#504945" # The color of that background, this is the default
 separator: " ➜ "
 border_width: 2
 corner_r: 10

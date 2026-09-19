@@ -123,6 +123,7 @@ fn main() -> anyhow::Result<()> {
         seats,
         keyboards: Vec::new(),
         kbd_repeat: None,
+        exit_on_release: None,
         outputs: Vec::new(),
         keyboard_shortcuts_inhibit_manager,
         keyboard_shortcuts_inhibitors: HashMap::new(),
@@ -154,7 +155,9 @@ fn main() -> anyhow::Result<()> {
             && timer.tick()
         {
             let action = action.clone();
-            state.handle_action(&mut conn, action);
+            if state.handle_action(&mut conn, action) {
+                state.close(&mut conn);
+            }
         }
 
         match conn.recv_events(IoMode::NonBlocking) {
@@ -172,6 +175,9 @@ struct State {
     seats: Seats,
     keyboards: Vec<Keyboard>,
     kbd_repeat: Option<(Timer, menu::Action)>,
+    /// Set when an action closed the menu: exit only once this key is released, so the release
+    /// is not delivered to the window that gets keyboard focus back.
+    exit_on_release: Option<xkb::Keycode>,
     outputs: Vec<Output>,
     keyboard_shortcuts_inhibit_manager: Option<ZwpKeyboardShortcutsInhibitManagerV1>,
     keyboard_shortcuts_inhibitors: HashMap<WlSeat, ZwpKeyboardShortcutsInhibitorV1>,
@@ -318,18 +324,13 @@ impl State {
         self.wl_surface.commit(conn);
     }
 
-    fn handle_action(&mut self, conn: &mut Connection<Self>, action: menu::Action) {
+    /// Performs `action`, returning `true` if the menu should now close.
+    fn handle_action(&mut self, conn: &mut Connection<Self>, action: menu::Action) -> bool {
         match action {
-            menu::Action::Quit => {
-                self.exit = true;
-                conn.break_dispatch_loop();
-            }
+            menu::Action::Quit => true,
             menu::Action::Exec { cmd, keep_open } => {
                 exec(&cmd);
-                if !keep_open {
-                    self.exit = true;
-                    conn.break_dispatch_loop();
-                }
+                !keep_open
             }
             menu::Action::Submenu(page) => {
                 self.menu.set_page(page);
@@ -337,8 +338,14 @@ impl State {
                 self.height = self.menu.height(&self.config) as u32;
                 self.layer_surface.set_size(conn, self.width, self.height);
                 self.wl_surface.commit(conn);
+                false
             }
         }
+    }
+
+    fn close(&mut self, conn: &mut Connection<Self>) {
+        self.exit = true;
+        conn.break_dispatch_loop();
     }
 }
 
@@ -387,8 +394,11 @@ impl KeyboardHandler for State {
 
     fn key_presed(&mut self, conn: &mut Connection<Self>, event: KeyboardEvent) {
         self.kbd_repeat = None;
+        if self.exit_on_release.is_some() {
+            return;
+        }
         let modifiers = ModifierState::from_xkb_state(&event.xkb_state);
-        let action = if let Some(action) = self.menu.get_action(modifiers, event.keysym) {
+        let action = if let Some(action) = self.menu.press(modifiers, event.keysym) {
             Some(action)
         } else if self.config.auto_kbd_layout {
             let mask = XkbMaskState::new(&event.xkb_state);
@@ -398,7 +408,7 @@ impl KeyboardHandler for State {
                 mask.with_locked_layout(layout).apply(&event.xkb_state);
                 if let Some(a) = self
                     .menu
-                    .get_action(modifiers, event.xkb_state.key_get_one_sym(event.keycode))
+                    .press(modifiers, event.xkb_state.key_get_one_sym(event.keycode))
                 {
                     action = Some(a);
                     break;
@@ -410,15 +420,35 @@ impl KeyboardHandler for State {
             None
         };
         if let Some(action) = action {
-            if let Some(repeat) = event.repeat_info {
-                self.kbd_repeat = Some((Timer::new(repeat.delay, repeat.interval), action.clone()));
+            if self.handle_action(conn, action.clone()) {
+                self.exit_on_release = Some(event.keycode);
+            } else if let Some(repeat) = event.repeat_info {
+                self.kbd_repeat = Some((Timer::new(repeat.delay, repeat.interval), action));
             }
-            self.handle_action(conn, action);
+            self.draw(conn);
         }
     }
 
-    fn key_released(&mut self, _: &mut Connection<Self>, _: KeyboardEvent) {
+    fn key_released(&mut self, conn: &mut Connection<Self>, event: KeyboardEvent) {
         self.kbd_repeat = None;
+        if self.exit_on_release == Some(event.keycode) {
+            self.close(conn);
+        } else {
+            self.menu.release();
+            self.draw(conn);
+        }
+    }
+
+    fn leave_surface(
+        &mut self,
+        conn: &mut Connection<Self>,
+        _: WlKeyboard,
+        _: wl_keyboard::LeaveArgs,
+    ) {
+        // The release will never reach us, so don't wait for it.
+        if self.exit_on_release.is_some() {
+            self.close(conn);
+        }
     }
 }
 

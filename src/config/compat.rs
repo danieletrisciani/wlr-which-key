@@ -99,6 +99,8 @@ impl From<Config> for super::Config {
             border_width: value.border_width,
             corner_r: value.corner_r,
             padding: value.padding,
+            highlight: false,
+            highlight_color: Color::from_rgba_hex(0x504945ff),
             rows_per_column: None,
             column_padding: None,
             menu: map_entries(value.menu),
