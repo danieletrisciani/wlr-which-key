@@ -27,6 +27,10 @@ pub struct Config {
     pub background: Color,
     #[default(Color::from_rgba_hex(0xfbf1c7ff))]
     pub color: Color,
+    /// Color of the keys; defaults to `color`.
+    pub key_color: Option<Color>,
+    /// Color of the separator; defaults to `color`.
+    pub separator_color: Option<Color>,
     #[default(Border::solid(Color::from_rgba_hex(0x8ec07cff)))]
     pub border: Border,
     /// Gradient direction in degrees, when `border` is a list of colors.

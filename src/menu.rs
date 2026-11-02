@@ -246,7 +246,7 @@ impl Menu {
                 text::RenderOptions {
                     x: dx + column.key_col_width - comp.key_comp.width,
                     y: dy + page.item_height * (i as f64),
-                    fg_color: config.color,
+                    fg_color: config.key_color.unwrap_or(config.color),
                     height: page.item_height,
                 },
             )?;
@@ -255,7 +255,7 @@ impl Menu {
                 text::RenderOptions {
                     x: dx + column.key_col_width,
                     y: dy + page.item_height * (i as f64),
-                    fg_color: config.color,
+                    fg_color: config.separator_color.unwrap_or(config.color),
                     height: page.item_height,
                 },
             )?;

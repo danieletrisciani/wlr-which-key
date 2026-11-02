@@ -37,6 +37,8 @@ Example config:
 font: JetBrainsMono Nerd Font 12
 background: "#282828d0"
 color: "#fbf1c7"
+key_color: "#fabd2f" # Color of the keys, defaults to color
+separator_color: "#fabd2f" # Color of the separator, defaults to color
 border: "#8ec07c" # Or a list of colors for a gradient, e.g. ["#fabd2f", "#8ec07c"]
 border_angle: 45 # Gradient direction in degrees (0 = left to right, 90 = top to bottom), defaults to 0
 highlight: true # Draw a background behind the entry whose key is held down, defaults to false

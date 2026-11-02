@@ -87,6 +87,8 @@ impl From<Config> for super::Config {
         Self {
             background: value.background,
             color: value.color,
+            key_color: None,
+            separator_color: None,
             border: Border::solid(value.border),
             border_angle: 0.0,
             anchor: value.anchor,
